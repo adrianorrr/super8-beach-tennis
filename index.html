@@ -106,7 +106,7 @@
 
       <button @click="createTournament()"
         class="mt-4 w-full rounded-2xl bg-gradient-to-r from-emerald-400 to-cyan-400 px-4 py-3 text-sm font-semibold text-zinc-950 shadow-lg shadow-emerald-500/20 hover:brightness-110 active:brightness-95">
-        Criar calendário e começar
+        Começar
       </button>
 
       <p class="mt-3 text-xs text-white/50">
@@ -727,7 +727,7 @@ function super8App() {
       this.tab = "games";
       this.ensureTempScores();
       this.recompute();
-      this.toast("ok", "Calendário criado.");
+      this.toast("ok", "Torneio criado.");
     },
 
     resetToSetup() {

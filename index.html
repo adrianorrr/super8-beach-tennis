@@ -1,0 +1,779 @@
+<!doctype html>
+<html lang="pt-br" class="h-full bg-zinc-950">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="theme-color" content="#09090b"/>
+  <title>Super 8 — Beach Tennis</title>
+
+  <!-- Tailwind CDN (sem Node / sem build) -->
+  <script src="https://cdn.tailwindcss.com"></script>
+
+  <!-- Alpine.js -->
+  <script src="https://unpkg.com/alpinejs@3.14.1/dist/cdn.min.js" defer></script>
+
+  <style>
+    *::-webkit-scrollbar { height: 10px; width: 10px; }
+    *::-webkit-scrollbar-thumb { background: rgba(255,255,255,.15); border-radius: 999px; }
+    @media print {
+      .no-print { display: none !important; }
+      .print-bg { background: white !important; }
+      .print-text { color: black !important; }
+      .print-border { border-color: #e5e7eb !important; }
+    }
+  </style>
+</head>
+
+<body class="h-full text-zinc-100 print-bg print-text">
+<div class="min-h-full" x-data="super8App()" x-init="init()">
+
+  <!-- Ambient blobs -->
+  <div class="pointer-events-none fixed inset-0 overflow-hidden">
+    <div class="absolute -top-40 left-1/2 h-[420px] w-[420px] -translate-x-1/2 rounded-full bg-fuchsia-500/20 blur-3xl"></div>
+    <div class="absolute top-20 -left-20 h-[360px] w-[360px] rounded-full bg-cyan-500/15 blur-3xl"></div>
+    <div class="absolute -bottom-40 right-0 h-[500px] w-[500px] rounded-full bg-emerald-500/10 blur-3xl"></div>
+  </div>
+
+  <!-- Toasts -->
+  <div class="fixed left-1/2 top-4 z-50 w-[92vw] max-w-md -translate-x-1/2 space-y-2 no-print">
+    <template x-for="toast in toasts" :key="toast.id">
+      <div x-show="toast.show" x-transition
+        class="rounded-2xl border border-white/10 bg-zinc-900/80 px-4 py-3 text-sm shadow-xl backdrop-blur">
+        <div class="flex items-start gap-3">
+          <div class="mt-0.5 h-2.5 w-2.5 rounded-full"
+               :class="toast.type === 'error' ? 'bg-rose-400' : 'bg-emerald-400'"></div>
+          <div class="flex-1">
+            <div class="font-medium" x-text="toast.type === 'error' ? 'Ops' : 'Ok'"></div>
+            <div class="text-white/70" x-text="toast.msg"></div>
+          </div>
+        </div>
+      </div>
+    </template>
+  </div>
+
+  <!-- SETUP VIEW -->
+  <main class="relative mx-auto max-w-xl px-4 pb-16 pt-10" x-show="view==='setup'" x-transition.opacity>
+    <header class="mb-6">
+      <div class="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-3 py-1 text-xs text-white/70">
+        <span class="h-2 w-2 rounded-full bg-emerald-400"></span>
+        
+      </div>
+      <h1 class="mt-4 text-3xl font-semibold tracking-tight">Super 8 — Beach Tennis</h1>
+      <p class="mt-2 text-sm text-white/70">
+        Cada jogador faz dupla <span class="font-medium text-white">1 vez com cada parceiro</span>.
+        Lance os placares e veja o pódio em tempo real.
+      </p>
+    </header>
+
+    <section class="rounded-3xl border border-white/10 bg-white/5 p-4 shadow-[0_0_0_1px_rgba(255,255,255,0.03)]">
+      <div class="grid grid-cols-2 gap-3">
+        <div>
+          <label class="text-xs text-white/70">Jogadores</label>
+          <select x-model.number="setup.playerCount" @change="syncPlayers()"
+                  class="mt-1 w-full rounded-2xl border border-white/10 bg-zinc-950/40 px-4 py-3 text-sm outline-none focus:border-white/20">
+            <option value="8">8</option>
+            <option value="9">9</option>
+            <option value="12">12</option>
+          </select>
+        </div>
+
+        <div>
+          <label class="text-xs text-white/70">Critério</label>
+          <select x-model="setup.rankingMode"
+                  class="mt-1 w-full rounded-2xl border border-white/10 bg-zinc-950/40 px-4 py-3 text-sm outline-none focus:border-white/20">
+            <option value="wins">Vitórias (desempate: saldo)</option>
+            <option value="saldo">Saldo (desempate: vitórias)</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="mt-4">
+        <div class="flex items-center justify-between">
+          <h2 class="text-sm font-medium">Nomes dos jogadores</h2>
+          <span class="text-xs text-white/50" x-text="setup.playerCount + ' jogadores'"></span>
+        </div>
+
+        <div class="mt-3 grid grid-cols-1 gap-2">
+          <template x-for="(p, idx) in setup.players" :key="idx">
+            <div class="relative">
+              <div class="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-xs text-white/40" x-text="(idx+1)"></div>
+              <input x-model="setup.players[idx]" :placeholder="'Jogador ' + (idx+1)"
+                class="w-full rounded-2xl border border-white/10 bg-zinc-950/40 pl-10 pr-4 py-3 text-sm outline-none focus:border-white/20" />
+            </div>
+          </template>
+        </div>
+      </div>
+
+      <button @click="createTournament()"
+        class="mt-4 w-full rounded-2xl bg-gradient-to-r from-emerald-400 to-cyan-400 px-4 py-3 text-sm font-semibold text-zinc-950 shadow-lg shadow-emerald-500/20 hover:brightness-110 active:brightness-95">
+        Começar
+      </button>
+
+      <p class="mt-3 text-xs text-white/50">
+        
+      </p>
+    </section>
+
+    <div class="mt-6 text-center text-xs text-white/40">
+      
+    </div>
+  </main>
+
+  <!-- TOURNAMENT VIEW -->
+  <div x-show="view==='tournament'" x-transition.opacity>
+    <header class="sticky top-0 z-40 border-b border-white/10 bg-zinc-950/70 backdrop-blur no-print">
+      <div class="mx-auto max-w-3xl px-4 py-4">
+        <div class="flex items-start justify-between gap-3">
+          <div>
+            <button @click="resetToSetup()"
+              class="inline-flex items-center gap-2 text-xs text-white/60 hover:text-white/80">
+              <span class="rounded-full border border-white/10 bg-white/5 px-2 py-1">←</span>
+              Novo torneio
+            </button>
+            <h1 class="mt-3 text-xl font-semibold leading-tight">Super 8 — Beach Tennis</h1>
+            <div class="mt-1 text-xs text-white/60">
+              <span x-text="t.playerCount"></span> jogadores •
+              <span x-text="(t.playerCount-1)"></span> partidas por jogador •
+              <span x-text="t.matches.length"></span> partidas no total
+            </div>
+          </div>
+
+          <div class="text-right text-xs text-white/60">
+            <div class="rounded-2xl border border-white/10 bg-white/5 px-3 py-2">
+              <div class="text-[11px] text-white/60">Critério</div>
+              <div class="mt-0.5 font-semibold text-white" x-text="t.rankingMode==='wins' ? 'Vitórias' : 'Saldo'"></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Tabs -->
+        <div class="mt-4 rounded-2xl border border-white/10 bg-white/5 p-1">
+          <div class="grid grid-cols-2 gap-1">
+            <button @click="tab='games'"
+                    class="rounded-xl px-3 py-2 text-sm font-semibold transition"
+                    :class="tab==='games' ? 'bg-white/10 text-white' : 'text-white/60 hover:bg-white/5'">
+              <span class="inline-flex items-center gap-2"><span class="text-base">🗓️</span> Jogos</span>
+            </button>
+            <button @click="tab='ranking'"
+                    class="rounded-xl px-3 py-2 text-sm font-semibold transition"
+                    :class="tab==='ranking' ? 'bg-white/10 text-white' : 'text-white/60 hover:bg-white/5'">
+              <span class="inline-flex items-center gap-2"><span class="text-base">🏆</span> Ranking</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- Progress (only in games tab) -->
+        <div class="mt-3 rounded-2xl border border-white/10 bg-white/5 p-3" x-show="tab==='games'" x-transition>
+          <div class="flex items-center justify-between">
+            <div class="text-xs text-white/70">Progresso</div>
+            <div class="text-xs text-white/70">
+              <span x-text="progress.done"></span>/<span x-text="progress.total"></span> • <span x-text="progress.pct"></span>%
+            </div>
+          </div>
+          <div class="mt-2 h-2 w-full overflow-hidden rounded-full bg-white/10">
+            <div class="h-full rounded-full bg-gradient-to-r from-emerald-400 to-cyan-400" :style="'width:' + progress.pct + '%'"></div>
+          </div>
+        </div>
+      </div>
+    </header>
+
+    <main class="mx-auto max-w-3xl px-4 py-6">
+      <!-- Ranking -->
+      <section x-show="tab==='ranking'" x-transition>
+        <div class="rounded-3xl border border-white/10 bg-white/5 p-4 shadow-[0_0_0_1px_rgba(255,255,255,0.03)]">
+          <div class="flex items-start justify-between gap-3">
+            <div>
+              <h2 class="text-lg font-semibold">Classificação</h2>
+              <p class="mt-1 text-xs text-white/60">
+                Critério: <span class="font-medium text-white" x-text="t.rankingMode==='wins' ? 'Vitórias' : 'Saldo'"></span>
+                • Desempate: <span x-text="t.rankingMode==='wins' ? 'Saldo' : 'Vitórias'"></span> → confronto direto → games pró → sorteio
+              </p>
+            </div>
+
+            <div class="no-print">
+              <div class="inline-flex items-center gap-2 rounded-2xl border border-white/10 bg-white/5 p-1">
+                <button @click="setRankingMode('wins')"
+                        class="rounded-xl px-3 py-2 text-xs font-semibold transition"
+                        :class="t.rankingMode==='wins' ? 'bg-white/10 text-white' : 'text-white/60 hover:bg-white/5'">
+                  Vitórias
+                </button>
+                <button @click="setRankingMode('saldo')"
+                        class="rounded-xl px-3 py-2 text-xs font-semibold transition"
+                        :class="t.rankingMode==='saldo' ? 'bg-white/10 text-white' : 'text-white/60 hover:bg-white/5'">
+                  Saldo
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <!-- Podium -->
+          <div class="mt-4 grid grid-cols-3 gap-2">
+            <div class="rounded-3xl border border-white/10 bg-zinc-950/30 p-3 text-center shadow-[0_0_0_1px_rgba(255,255,255,0.02)]">
+              <div class="mx-auto flex h-10 w-10 items-center justify-center rounded-2xl bg-white/5 text-lg">🥈</div>
+              <div class="mt-2 text-xs text-white/50">2º</div>
+              <div class="mt-1 font-semibold truncate" x-text="podium[1]?.name ?? '—'"></div>
+              <div class="mt-2 text-[11px] text-white/60">
+                <span class="font-mono text-white" x-text="(podium[1]?.wins ?? 0) + 'V'"></span>
+                <span class="mx-1 text-white/30">•</span>
+                <span class="font-mono" x-text="(podium[1]?.saldo ?? 0) + ' saldo'"></span>
+              </div>
+            </div>
+
+            <div class="rounded-3xl border border-white/10 bg-gradient-to-b from-emerald-400/10 to-cyan-400/5 p-3 text-center shadow-[0_0_0_1px_rgba(255,255,255,0.03)]">
+              <div class="mx-auto flex h-12 w-12 items-center justify-center rounded-2xl bg-gradient-to-r from-emerald-400/25 to-cyan-400/25 text-xl">🥇</div>
+              <div class="mt-2 text-xs text-white/60">1º</div>
+              <div class="mt-1 text-base font-semibold truncate" x-text="podium[0]?.name ?? '—'"></div>
+              <div class="mt-2 text-[11px] text-white/70">
+                <span class="font-mono text-white" x-text="(podium[0]?.wins ?? 0) + 'V'"></span>
+                <span class="mx-1 text-white/30">•</span>
+                <span class="font-mono" x-text="(podium[0]?.saldo ?? 0) + ' saldo'"></span>
+              </div>
+            </div>
+
+            <div class="rounded-3xl border border-white/10 bg-zinc-950/30 p-3 text-center shadow-[0_0_0_1px_rgba(255,255,255,0.02)]">
+              <div class="mx-auto flex h-10 w-10 items-center justify-center rounded-2xl bg-white/5 text-lg">🥉</div>
+              <div class="mt-2 text-xs text-white/50">3º</div>
+              <div class="mt-1 font-semibold truncate" x-text="podium[2]?.name ?? '—'"></div>
+              <div class="mt-2 text-[11px] text-white/60">
+                <span class="font-mono text-white" x-text="(podium[2]?.wins ?? 0) + 'V'"></span>
+                <span class="mx-1 text-white/30">•</span>
+                <span class="font-mono" x-text="(podium[2]?.saldo ?? 0) + ' saldo'"></span>
+              </div>
+            </div>
+          </div>
+
+          <!-- List -->
+          <div class="mt-4 overflow-hidden rounded-2xl border border-white/10 bg-zinc-950/25">
+            <div class="grid grid-cols-12 gap-2 border-b border-white/10 px-3 py-2 text-[11px] text-white/60">
+              <div class="col-span-1">#</div>
+              <div class="col-span-6">Jogador</div>
+              <div class="col-span-2 text-right">Vit</div>
+              <div class="col-span-2 text-right">Saldo</div>
+              <div class="col-span-1 text-right">GP</div>
+            </div>
+
+            <template x-for="p in standings" :key="p.idx">
+              <div class="grid grid-cols-12 gap-2 px-3 py-3 text-sm border-b border-white/5 last:border-b-0">
+                <div class="col-span-1 font-mono text-xs text-white/60" x-text="p.rank"></div>
+                <div class="col-span-6">
+                  <div class="font-medium" x-text="p.name"></div>
+                  <div class="mt-0.5 text-[11px] text-white/50">
+                    <span x-text="'Parceiros: ' + partnerCounts[p.idx].done + '/' + partnerCounts[p.idx].total"></span>
+                    <span class="text-white/30"> • </span>
+                    <span x-text="'Jogos: ' + p.played + '/' + (t.playerCount-1)"></span>
+                  </div>
+                </div>
+                <div class="col-span-2 text-right font-mono" x-text="p.wins"></div>
+                <div class="col-span-2 text-right font-mono" x-text="p.saldo"></div>
+                <div class="col-span-1 text-right font-mono text-xs text-white/70" x-text="p.games_for"></div>
+              </div>
+            </template>
+          </div>
+        </div>
+      </section>
+
+      <!-- Games -->
+      <section x-show="tab==='games'" x-transition>
+        <div class="flex items-end justify-between">
+          <h2 class="text-lg font-semibold">Partidas</h2>
+          <div class="text-xs text-white/60">Lance o placar e salve.</div>
+        </div>
+
+        <div class="mt-3 space-y-2">
+          <template x-for="m in t.matches" :key="m.id">
+            <div class="rounded-3xl border border-white/10 bg-white/5 p-3 shadow-[0_0_0_1px_rgba(255,255,255,0.02)]">
+              <div class="flex items-center justify-between gap-3">
+                <div class="text-xs text-white/60">
+                  Rodada <span class="font-medium text-white" x-text="m.round"></span> •
+                  Quadra <span class="font-medium text-white" x-text="m.court"></span> •
+                  <span class="font-mono">#<span x-text="m.id"></span></span>
+                </div>
+                <div class="text-xs">
+                  <template x-if="t.results[m.id]">
+                    <span class="rounded-full border border-white/10 bg-emerald-400/15 px-2 py-0.5 text-emerald-200">Finalizado</span>
+                  </template>
+                  <template x-if="!t.results[m.id]">
+                    <span class="rounded-full border border-white/10 bg-white/5 px-2 py-0.5 text-white/60">Pendente</span>
+                  </template>
+                </div>
+              </div>
+
+              <div class="mt-3 grid grid-cols-1 gap-2">
+                <div class="rounded-2xl border border-white/10 bg-zinc-950/30 p-3">
+                  <div class="text-sm font-semibold">
+                    <span x-text="t.players[m.team1[0]]"></span>
+                    <span class="text-white/40">+</span>
+                    <span x-text="t.players[m.team1[1]]"></span>
+                  </div>
+                  <div class="mt-1 text-xs text-white/50">Dupla A</div>
+                </div>
+
+                <div class="rounded-2xl border border-white/10 bg-zinc-950/30 p-3">
+                  <div class="text-sm font-semibold">
+                    <span x-text="t.players[m.team2[0]]"></span>
+                    <span class="text-white/40">+</span>
+                    <span x-text="t.players[m.team2[1]]"></span>
+                  </div>
+                  <div class="mt-1 text-xs text-white/50">Dupla B</div>
+                </div>
+              </div>
+
+              <div class="mt-3 grid grid-cols-12 gap-2 items-center no-print">
+                <div class="col-span-5">
+                  <input inputmode="numeric" placeholder="Placar A"
+                    class="w-full rounded-2xl border border-white/10 bg-zinc-950/40 px-3 py-3 text-sm font-mono outline-none focus:border-white/20"
+                    x-model="tempScores[m.id].a" />
+                </div>
+
+                <div class="col-span-2 text-center text-white/50 font-mono">x</div>
+
+                <div class="col-span-5">
+                  <input inputmode="numeric" placeholder="Placar B"
+                    class="w-full rounded-2xl border border-white/10 bg-zinc-950/40 px-3 py-3 text-sm font-mono outline-none focus:border-white/20"
+                    x-model="tempScores[m.id].b" />
+                </div>
+
+                <div class="col-span-12 grid grid-cols-2 gap-2">
+                  <button @click="saveMatch(m.id)"
+                    class="rounded-2xl bg-gradient-to-r from-emerald-400 to-cyan-400 px-4 py-3 text-sm font-semibold text-zinc-950 hover:brightness-110">
+                    Salvar
+                  </button>
+
+                  <button @click="clearMatch(m.id)"
+                    class="rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-sm font-semibold text-white hover:bg-white/10">
+                    Limpar
+                  </button>
+                </div>
+              </div>
+
+              <template x-if="t.results[m.id]">
+                <div class="mt-3 rounded-2xl border border-white/10 bg-zinc-950/30 p-3 text-xs text-white/70">
+                  Resultado:
+                  <span class="font-mono" x-text="t.results[m.id].score1"></span>
+                  x
+                  <span class="font-mono" x-text="t.results[m.id].score2"></span>
+                </div>
+              </template>
+            </div>
+          </template>
+        </div>
+      </section>
+    </main>
+  </div>
+
+</div>
+
+<script>
+function super8App() {
+  const STORAGE_KEY = "super8:tournament:v1";
+
+  // ---------- small utils ----------
+  const cleanName = (s) => (s || "").replace(/\s+/g, " ").trim();
+  const nowIso = () => new Date().toISOString();
+
+  function toastFactory(ctx) {
+    return (type, msg) => {
+      const id = Date.now() + Math.random();
+      const t = { id, type, msg, show: true };
+      ctx.toasts.push(t);
+      setTimeout(() => { t.show = false; }, 2600);
+      setTimeout(() => { ctx.toasts = ctx.toasts.filter(x => x.id !== id); }, 3400);
+    };
+  }
+
+  // Deterministic-ish hash (string -> uint32)
+  function hash32(str) {
+    let h = 2166136261 >>> 0;
+    for (let i = 0; i < str.length; i++) {
+      h ^= str.charCodeAt(i);
+      h = Math.imul(h, 16777619);
+    }
+    return h >>> 0;
+  }
+
+  // PRNG mulberry32
+  function mulberry32(a) {
+    return function() {
+      a |= 0; a = a + 0x6D2B79F5 | 0;
+      let t = Math.imul(a ^ a >>> 15, 1 | a);
+      t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t;
+      return ((t ^ t >>> 14) >>> 0) / 4294967296;
+    }
+  }
+
+  function shuffleInPlace(arr, rng) {
+    for (let i = arr.length - 1; i > 0; i--) {
+      const j = Math.floor(rng() * (i + 1));
+      [arr[i], arr[j]] = [arr[j], arr[i]];
+    }
+    return arr;
+  }
+
+  // ---------- schedule ----------
+  function generateSchedule(n, seed) {
+    // circle method with ghost if n odd
+    let ghost = null;
+    let arr = Array.from({length:n}, (_,i)=>i);
+    if (n % 2 === 1) { ghost = n; arr.push(ghost); }
+    const N = arr.length; // even
+    const fixed = arr[0];
+    let rot = arr.slice(1);
+    const rounds = N - 1; // even n => n-1; odd n => n
+    let matches = [];
+    let matchId = 1;
+
+    for (let r = 1; r <= rounds; r++) {
+      const line = [fixed, ...rot];
+      let pairs = [];
+      for (let i = 0; i < N/2; i++) {
+        const a = line[i];
+        const b = line[N - 1 - i];
+        if (a === ghost || b === ghost) continue;
+        pairs.push([a,b]);
+      }
+
+      // Shuffle pairs within round for nicer variety (seeded)
+      const rng = mulberry32(hash32(seed + "|" + r));
+      shuffleInPlace(pairs, rng);
+
+      // group pairs into matches (2 pairs per match)
+      for (let i = 0; i < pairs.length; i += 2) {
+        const t1 = pairs[i];
+        const t2 = pairs[i+1];
+        matches.push({
+          id: matchId,
+          round: r,
+          court: (i/2)+1,
+          team1: t1,
+          team2: t2
+        });
+        matchId += 1;
+      }
+
+      // rotate
+      rot = [rot[rot.length-1], ...rot.slice(0, rot.length-1)];
+    }
+
+    return matches;
+  }
+
+  // ---------- standings ----------
+  function computeDerived(t) {
+    const n = t.playerCount;
+    const stats = Array.from({length:n}, (_,i)=>({
+      idx:i,
+      name:t.players[i],
+      wins:0,
+      games_for:0,
+      games_against:0,
+      played:0
+    }));
+
+    const h2hWins = new Map();   // key "a|b" => wins of a over b (count)
+    const h2hSaldo = new Map();  // key "a|b" => saldo of a vs b (sum)
+
+    const addH2H = (a,b,won,delta) => {
+      const k = `${a}|${b}`;
+      h2hWins.set(k, (h2hWins.get(k) || 0) + (won ? 1 : 0));
+      h2hSaldo.set(k, (h2hSaldo.get(k) || 0) + delta);
+    };
+
+    let done = 0;
+    for (const m of t.matches) {
+      const r = t.results[m.id];
+      if (!r) continue;
+      const s1 = Number(r.score1);
+      const s2 = Number(r.score2);
+      if (!Number.isFinite(s1) || !Number.isFinite(s2) || s1 === s2) continue;
+      done++;
+
+      const [a,b] = m.team1;
+      const [c,d] = m.team2;
+
+      // games and played
+      for (const p of [a,b]) {
+        stats[p].games_for += s1;
+        stats[p].games_against += s2;
+        stats[p].played += 1;
+      }
+      for (const p of [c,d]) {
+        stats[p].games_for += s2;
+        stats[p].games_against += s1;
+        stats[p].played += 1;
+      }
+
+      const t1won = s1 > s2;
+      if (t1won) { stats[a].wins++; stats[b].wins++; }
+      else { stats[c].wins++; stats[d].wins++; }
+
+      const delta1 = s1 - s2;
+      const delta2 = s2 - s1;
+      for (const p of [a,b]) for (const q of [c,d]) {
+        addH2H(p,q,t1won,delta1);
+        addH2H(q,p,!t1won,delta2);
+      }
+    }
+
+    const progress = {
+      done,
+      total: t.matches.length,
+      pct: t.matches.length ? Math.round(done*100/t.matches.length) : 0
+    };
+
+    // partners done (only completed)
+    const partnersDone = Array.from({length:n}, ()=> new Set());
+    for (const m of t.matches) {
+      const r = t.results[m.id];
+      if (!r) continue;
+      const s1 = Number(r.score1), s2 = Number(r.score2);
+      if (!Number.isFinite(s1) || !Number.isFinite(s2) || s1 === s2) continue;
+      const [a,b] = m.team1;
+      const [c,d] = m.team2;
+      partnersDone[a].add(b); partnersDone[b].add(a);
+      partnersDone[c].add(d); partnersDone[d].add(c);
+    }
+    const partnerCounts = {};
+    for (let i=0;i<n;i++) partnerCounts[i] = { idx:i, done: partnersDone[i].size, total: n-1 };
+
+    const saldo = (p) => p.games_for - p.games_against;
+
+    const primaryKey = (p) => (t.rankingMode === "wins")
+      ? [p.wins, saldo(p)]
+      : [saldo(p), p.wins];
+
+    const h2hScore = (p, groupIdxs) => {
+      let w=0, s=0;
+      for (const opp of groupIdxs) {
+        if (opp === p.idx) continue;
+        w += (h2hWins.get(`${p.idx}|${opp}`) || 0);
+        s += (h2hSaldo.get(`${p.idx}|${opp}`) || 0);
+      }
+      return [w,s];
+    };
+
+    const deterministic = (name) => (hash32(String(t.seed) + "|" + name) >>> 0);
+
+    // initial sort by primary/secondary
+    let ordered = [...stats].sort((p,q)=>{
+      const [p1,p2] = primaryKey(p);
+      const [q1,q2] = primaryKey(q);
+      if (q1 !== p1) return q1 - p1;
+      if (q2 !== p2) return q2 - p2;
+      return 0;
+    });
+
+    // resolve tie groups with h2h -> games_for -> sorteio
+    let final = [];
+    for (let i=0;i<ordered.length;) {
+      let j=i+1;
+      const pk = primaryKey(ordered[i]);
+      while (j<ordered.length) {
+        const pk2 = primaryKey(ordered[j]);
+        if (pk2[0] !== pk[0] || pk2[1] !== pk[1]) break;
+        j++;
+      }
+      const group = ordered.slice(i,j);
+      if (group.length === 1) {
+        final.push(group[0]);
+      } else {
+        const idxs = group.map(x=>x.idx);
+        group.sort((p,q)=>{
+          const [pw,ps] = h2hScore(p, idxs);
+          const [qw,qs] = h2hScore(q, idxs);
+          if (qw !== pw) return qw - pw;
+          if (qs !== ps) return qs - ps;
+          if (q.games_for !== p.games_for) return q.games_for - p.games_for;
+          return deterministic(q.name) - deterministic(p.name);
+        });
+        final.push(...group);
+      }
+      i=j;
+    }
+
+    const standings = final.map((p, idx)=>({
+      rank: idx+1,
+      idx: p.idx,
+      name: p.name,
+      wins: p.wins,
+      saldo: saldo(p),
+      games_for: p.games_for,
+      games_against: p.games_against,
+      played: p.played
+    }));
+
+    const podium = standings.slice(0,3);
+
+    return { standings, podium, progress, partnerCounts };
+  }
+
+  return {
+    // UI state
+    view: "setup",
+    tab: "games",
+    toasts: [],
+
+    // setup model
+    setup: {
+      playerCount: 8,
+      rankingMode: "wins",
+      players: Array.from({length:8}, ()=>"")
+    },
+
+    // tournament model
+    t: null,
+    tempScores: {},
+    standings: [],
+    podium: [],
+    progress: {done:0,total:0,pct:0},
+    partnerCounts: {},
+
+    init() {
+      this.toast = toastFactory(this);
+
+      // load existing tournament
+      const raw = localStorage.getItem(STORAGE_KEY);
+      if (raw) {
+        try {
+          const t = JSON.parse(raw);
+          if (t && t.players && t.matches) {
+            this.t = t;
+            this.view = "tournament";
+            this.tab = "games";
+            this.ensureTempScores();
+            this.recompute();
+            return;
+          }
+        } catch (e) {}
+      }
+      this.syncPlayers();
+    },
+
+    syncPlayers() {
+      const n = this.setup.playerCount;
+      const cur = (this.setup.players || []).slice(0, n);
+      while (cur.length < n) cur.push("");
+      this.setup.players = cur;
+    },
+
+    saveStorage() {
+      if (this.t) localStorage.setItem(STORAGE_KEY, JSON.stringify(this.t));
+    },
+
+    ensureTempScores() {
+      this.tempScores = {};
+      for (const m of this.t.matches) {
+        const existing = this.t.results[m.id];
+        this.tempScores[m.id] = {
+          a: existing ? String(existing.score1) : "",
+          b: existing ? String(existing.score2) : "",
+        };
+      }
+    },
+
+    recompute() {
+      const d = computeDerived(this.t);
+      this.standings = d.standings;
+      this.podium = d.podium;
+      this.progress = d.progress;
+      this.partnerCounts = d.partnerCounts;
+      this.saveStorage();
+    },
+
+    setRankingMode(mode) {
+      this.t.rankingMode = mode;
+      this.recompute();
+      this.toast("ok", "Critério atualizado.");
+    },
+
+    createTournament() {
+      const n = this.setup.playerCount;
+      if (![8,9,12].includes(n)) {
+        this.toast("error", "Quantidade inválida.");
+        return;
+      }
+      // validate names
+      let names = this.setup.players.map(cleanName);
+      if (names.some(x => !x)) {
+        this.toast("error", "Preencha todos os nomes.");
+        return;
+      }
+      const lower = names.map(x=>x.toLowerCase());
+      if (new Set(lower).size !== lower.length) {
+        this.toast("error", "Os nomes precisam ser únicos (sem repetição).");
+        return;
+      }
+
+      // seed used for deterministic shuffles & sorteio
+      let seed = Math.floor(Math.random() * 2**32);
+      try {
+        if (crypto && crypto.getRandomValues) seed = crypto.getRandomValues(new Uint32Array(1))[0];
+      } catch (e) {}
+
+      const matches = generateSchedule(n, String(seed));
+
+      this.t = {
+        id: String(seed),
+        seed: seed,
+        createdAt: nowIso(),
+        playerCount: n,
+        players: names,
+        matches: matches,
+        results: {},   // matchId -> {score1, score2}
+        rankingMode: this.setup.rankingMode
+      };
+
+      this.view = "tournament";
+      this.tab = "games";
+      this.ensureTempScores();
+      this.recompute();
+      this.toast("ok", "Calendário criado.");
+    },
+
+    resetToSetup() {
+      localStorage.removeItem(STORAGE_KEY);
+      this.t = null;
+      this.view = "setup";
+      this.tab = "games";
+      this.toast("ok", "Pronto — crie um novo torneio.");
+    },
+
+    saveMatch(matchId) {
+      const aRaw = (this.tempScores[matchId]?.a ?? "").trim();
+      const bRaw = (this.tempScores[matchId]?.b ?? "").trim();
+
+      if (!aRaw || !bRaw) {
+        this.toast("error", "Informe os dois placares.");
+        return;
+      }
+
+      const a = Number(aRaw);
+      const b = Number(bRaw);
+      if (!Number.isInteger(a) || !Number.isInteger(b)) {
+        this.toast("error", "Placar inválido (use números inteiros).");
+        return;
+      }
+      if (a < 0 || b < 0) {
+        this.toast("error", "Placar não pode ser negativo.");
+        return;
+      }
+      if (a === b) {
+        this.toast("error", "Não pode empatar (set único).");
+        return;
+      }
+
+      this.t.results[matchId] = { score1: a, score2: b, updatedAt: nowIso() };
+      this.recompute();
+      this.toast("ok", "Placar salvo.");
+    },
+
+    clearMatch(matchId) {
+      delete this.t.results[matchId];
+      this.tempScores[matchId] = { a:"", b:"" };
+      this.recompute();
+      this.toast("ok", "Placar limpo.");
+    }
+  }
+}
+</script>
+</body>
+</html>

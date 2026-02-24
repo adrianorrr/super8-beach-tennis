@@ -55,16 +55,50 @@
   <main class="relative mx-auto max-w-xl px-4 pb-16 pt-10" x-show="view==='setup'" x-transition.opacity>
     <header class="mb-6">
       <h1 class="mt-4 text-3xl font-semibold tracking-tight">Super 8 — Beach Tennis</h1>
-      <p class="mt-2 text-sm text-white/70">
-        Cada jogador faz dupla <span class="font-medium text-white">1 vez com cada parceiro</span>.
-        Lance os placares e veja o pódio em tempo real.
-      </p>
+
+      <!-- Description changes by mode -->
+      <template x-if="setup.mode === 'individual'">
+        <p class="mt-2 text-sm text-white/70">
+          <span class="font-medium text-white">Individual (dinâmico):</span>
+          cada jogador faz dupla <span class="font-medium text-white">1 vez com cada parceiro</span>.
+          Lance os placares e veja o pódio em tempo real.
+        </p>
+      </template>
+
+      <template x-if="setup.mode === 'fixed'">
+        <p class="mt-2 text-sm text-white/70">
+          <span class="font-medium text-white">Dupla fixa:</span>
+          informe as duplas (ex: <span class="font-mono text-white">João + Pedro</span>) e o sistema cria um
+          <span class="font-medium text-white">round-robin</span> (todas contra todas).
+          Se for ímpar, alguém <span class="font-medium text-white">folga</span>.
+        </p>
+      </template>
     </header>
 
     <section class="rounded-3xl border border-white/10 bg-white/5 p-4 shadow-[0_0_0_1px_rgba(255,255,255,0.03)]">
+
+      <!-- Mode toggle -->
+      <div class="mb-4">
+        <label class="text-xs text-white/70">Formato</label>
+        <div class="mt-1 grid grid-cols-2 gap-1 rounded-2xl border border-white/10 bg-zinc-950/40 p-1">
+          <button
+            @click="setup.mode='individual'; syncPlayers()"
+            class="rounded-xl px-3 py-2 text-sm font-semibold transition"
+            :class="setup.mode==='individual' ? 'bg-white/10 text-white' : 'text-white/60 hover:bg-white/5'">
+            Individual
+          </button>
+          <button
+            @click="setup.mode='fixed'; syncPlayers()"
+            class="rounded-xl px-3 py-2 text-sm font-semibold transition"
+            :class="setup.mode==='fixed' ? 'bg-white/10 text-white' : 'text-white/60 hover:bg-white/5'">
+            Dupla fixa
+          </button>
+        </div>
+      </div>
+
       <div class="grid grid-cols-2 gap-3">
         <div>
-          <label class="text-xs text-white/70">Jogadores</label>
+          <label class="text-xs text-white/70" x-text="setup.mode==='fixed' ? 'Duplas' : 'Jogadores'"></label>
           <select x-model.number="setup.playerCount" @change="syncPlayers()"
                   class="mt-1 w-full rounded-2xl border border-white/10 bg-zinc-950/40 px-4 py-3 text-[16px] leading-6 outline-none transition origin-left scale-[0.98] focus:scale-100 focus:border-white/25 focus:bg-zinc-950/55 focus:shadow-[0_0_0_4px_rgba(16,185,129,0.12)]">
             <template x-for="n in playerOptions" :key="n">
@@ -85,15 +119,17 @@
 
       <div class="mt-4">
         <div class="flex items-center justify-between">
-          <h2 class="text-sm font-medium">Nomes dos jogadores</h2>
-          <span class="text-xs text-white/50" x-text="setup.playerCount + ' jogadores'"></span>
+          <h2 class="text-sm font-medium" x-text="setup.mode==='fixed' ? 'Nomes das duplas' : 'Nomes dos jogadores'"></h2>
+          <span class="text-xs text-white/50" x-text="setup.playerCount + (setup.mode==='fixed' ? ' duplas' : ' jogadores')"></span>
         </div>
 
         <div class="mt-3 grid grid-cols-1 gap-2">
           <template x-for="(p, idx) in setup.players" :key="idx">
             <div class="relative">
               <div class="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-xs text-white/40" x-text="(idx+1)"></div>
-              <input x-model="setup.players[idx]" :placeholder="'Jogador ' + (idx+1)"
+              <input
+                x-model="setup.players[idx]"
+                :placeholder="setup.mode==='fixed' ? ('Dupla ' + (idx+1) + ' (ex: João + Pedro)') : ('Jogador ' + (idx+1))"
                 class="w-full rounded-2xl border border-white/10 bg-zinc-950/40 pl-10 pr-4 py-3 text-[16px] leading-6 outline-none transition origin-left scale-[0.98] focus:scale-100 focus:border-white/25 focus:bg-zinc-950/55 focus:shadow-[0_0_0_4px_rgba(16,185,129,0.12)]" />
             </div>
           </template>
@@ -118,11 +154,21 @@
               <span class="rounded-full border border-white/10 bg-white/5 px-2 py-1">←</span>
               Novo torneio
             </button>
+
             <h1 class="mt-3 text-xl font-semibold leading-tight">Super 8 — Beach Tennis</h1>
+
             <div class="mt-1 text-xs text-white/60">
-              <span x-text="t.playerCount"></span> jogadores •
-              <span x-text="(t.playerCount-1)"></span> partidas por jogador •
+              <span x-text="t.playerCount"></span>
+              <span x-text="t.mode==='fixed' ? 'duplas' : 'jogadores'"></span>
+              <span class="mx-1">•</span>
+              <span x-text="(t.playerCount-1)"></span>
+              <span x-text="t.mode==='fixed' ? 'partidas por dupla' : 'partidas por jogador'"></span>
+              <span class="mx-1">•</span>
               <span x-text="t.matches.length"></span> partidas no total
+            </div>
+
+            <div class="mt-1 text-[11px] text-white/55">
+              Formato: <span class="font-medium text-white" x-text="t.mode==='fixed' ? 'Dupla fixa' : 'Individual (dinâmico)'"></span>
             </div>
           </div>
 
@@ -234,7 +280,7 @@
           <div class="mt-4 overflow-hidden rounded-2xl border border-white/10 bg-zinc-950/25">
             <div class="grid grid-cols-12 gap-2 border-b border-white/10 px-3 py-2 text-[11px] text-white/60">
               <div class="col-span-1">#</div>
-              <div class="col-span-6">Jogador</div>
+              <div class="col-span-6" x-text="t.mode==='fixed' ? 'Dupla' : 'Jogador'"></div>
               <div class="col-span-2 text-right">Vit</div>
               <div class="col-span-2 text-right">Saldo</div>
               <div class="col-span-1 text-right">GP</div>
@@ -246,8 +292,10 @@
                 <div class="col-span-6">
                   <div class="font-medium" x-text="p.name"></div>
                   <div class="mt-0.5 text-[11px] text-white/50">
-                    <span x-text="'Parceiros: ' + partnerCounts[p.idx].done + '/' + partnerCounts[p.idx].total"></span>
-                    <span class="text-white/30"> • </span>
+                    <template x-if="t.mode==='individual'">
+                      <span x-text="'Parceiros: ' + partnerCounts[p.idx].done + '/' + partnerCounts[p.idx].total"></span>
+                    </template>
+                    <span class="text-white/30" x-show="t.mode==='individual'"> • </span>
                     <span x-text="'Jogos: ' + p.played + '/' + (t.playerCount-1)"></span>
                   </div>
                 </div>
@@ -273,7 +321,9 @@
               <div class="flex items-center justify-between gap-3">
                 <div class="text-xs text-white/60">
                   Jogo <span class="font-mono">#<span x-text="m.id"></span></span>
-                  <template x-if="m.nonScoringTeam">
+
+                  <!-- only show non-scoring badge for individual mode -->
+                  <template x-if="t.mode==='individual' && m.nonScoringTeam">
                     <span class="ml-2 rounded-full border border-white/10 bg-amber-400/15 px-2 py-0.5 text-amber-200">
                       Dupla <span x-text="m.nonScoringTeam===1 ? 'A' : 'B'"></span> não pontua
                     </span>
@@ -291,28 +341,20 @@
 
               <div class="mt-3 grid grid-cols-1 gap-2">
                 <div class="rounded-2xl border border-white/10 bg-zinc-950/30 p-3">
-                  <div class="text-sm font-semibold">
-                    <span x-text="t.players[m.team1[0]]"></span>
-                    <span class="text-white/40">+</span>
-                    <span x-text="t.players[m.team1[1]]"></span>
-                  </div>
+                  <div class="text-sm font-semibold" x-text="formatSide(m.sideA)"></div>
                   <div class="mt-1 text-xs text-white/50 flex items-center gap-2">
                     <span>Dupla A</span>
-                    <template x-if="m.nonScoringTeam===1">
+                    <template x-if="t.mode==='individual' && m.nonScoringTeam===1">
                       <span class="rounded-full border border-white/10 bg-amber-400/15 px-2 py-0.5 text-amber-200 text-[11px]">Não pontua</span>
                     </template>
                   </div>
                 </div>
 
                 <div class="rounded-2xl border border-white/10 bg-zinc-950/30 p-3">
-                  <div class="text-sm font-semibold">
-                    <span x-text="t.players[m.team2[0]]"></span>
-                    <span class="text-white/40">+</span>
-                    <span x-text="t.players[m.team2[1]]"></span>
-                  </div>
+                  <div class="text-sm font-semibold" x-text="formatSide(m.sideB)"></div>
                   <div class="mt-1 text-xs text-white/50 flex items-center gap-2">
                     <span>Dupla B</span>
-                    <template x-if="m.nonScoringTeam===2">
+                    <template x-if="t.mode==='individual' && m.nonScoringTeam===2">
                       <span class="rounded-full border border-white/10 bg-amber-400/15 px-2 py-0.5 text-amber-200 text-[11px]">Não pontua</span>
                     </template>
                   </div>
@@ -366,10 +408,12 @@
 
 <script>
 function super8App() {
-  const STORAGE_KEY = "super8:tournament:v1";
+  const STORAGE_KEY = "super8:tournament:v2";
+  const STORAGE_KEY_OLD = "super8:tournament:v1";
 
   // ---------- small utils ----------
   const cleanName = (s) => (s || "").replace(/\s+/g, " ").trim();
+  const cleanTeamName = (s) => cleanName(s).replace(/\s*\+\s*/g, " + ");
   const nowIso = () => new Date().toISOString();
 
   function toastFactory(ctx) {
@@ -493,7 +537,7 @@ function super8App() {
       // if we have a carry, pair it with any disjoint pair from this round
       if (carry) {
         let idx = pairs.findIndex(p => isDisjoint(carry, p));
-        if (idx === -1) idx = 0; // fallback (shouldn't happen for n>=6)
+        if (idx === -1) idx = 0; // fallback
         const opp = pairs.splice(idx, 1)[0];
         matches.push({
           id: matchId++,
@@ -544,10 +588,75 @@ function super8App() {
     return matches;
   }
 
+  // ---------- schedule (FIXED DOUBLES: round-robin de duplas; se ímpar, folga) ----------
+  function generateFixedTeamSchedule(teamCount, seed) {
+    let ghost = null;
+    let arr = Array.from({length: teamCount}, (_,i)=>i);
+    if (teamCount % 2 === 1) { ghost = teamCount; arr.push(ghost); }
+    const N = arr.length; // even
+    const fixed = arr[0];
+    let rot = arr.slice(1);
+    const rounds = N - 1;
+
+    let matches = [];
+    let matchId = 1;
+
+    for (let r=1; r<=rounds; r++) {
+      const line = [fixed, ...rot];
+      let pairs = [];
+      for (let i=0;i<N/2;i++){
+        const a = line[i];
+        const b = line[N-1-i];
+        if (a === ghost || b === ghost) continue; // bye
+        pairs.push([a,b]);
+      }
+
+      // shuffle within round (seeded) – mantém máxima simultaneidade (pares continuam disjuntos)
+      const rng = mulberry32(hash32(seed + "|f|" + r));
+      shuffleInPlace(pairs, rng);
+
+      for (const [a,b] of pairs) {
+        matches.push({
+          id: matchId++,
+          sideA: [a],
+          sideB: [b],
+          nonScoringTeam: null
+        });
+      }
+
+      rot = [rot[rot.length-1], ...rot.slice(0, rot.length-1)];
+    }
+
+    return matches;
+  }
+
+  // ---------- normalize matches (store as sideA/sideB) ----------
+  function normalizeMatches(rawMatches, mode) {
+    if (!Array.isArray(rawMatches)) return [];
+    return rawMatches.map(m => {
+      // already normalized
+      if (m && Array.isArray(m.sideA) && Array.isArray(m.sideB)) {
+        return {
+          id: m.id,
+          sideA: m.sideA,
+          sideB: m.sideB,
+          nonScoringTeam: (mode === "individual") ? (m.nonScoringTeam ?? null) : null
+        };
+      }
+      // legacy shape {team1, team2}
+      return {
+        id: m.id,
+        sideA: m.team1,
+        sideB: m.team2,
+        nonScoringTeam: (mode === "individual") ? (m.nonScoringTeam ?? null) : null
+      };
+    });
+  }
+
   // ---------- standings ----------
   function computeDerived(t) {
     const n = t.playerCount;
-    const stats = Array.from({length:n}, (_,i)=>({
+    const stats = Array.from({length:n}, (_,i)=>( {
       idx:i,
       name:t.players[i],
       wins:0,
@@ -578,47 +687,47 @@ function super8App() {
       done++;
 
       const ns = m.nonScoringTeam || null; // 1 => A não pontua, 2 => B não pontua, null => ambos pontuam
-      const team1Counts = (ns !== 1);
-      const team2Counts = (ns !== 2);
+      const sideACounts = (ns !== 1);
+      const sideBCounts = (ns !== 2);
 
-      const [a,b] = m.team1;
-      const [c,d] = m.team2;
+      const A = m.sideA;
+      const B = m.sideB;
 
-      // games + played (only for scoring teams)
-      if (team1Counts) {
-        for (const p of [a,b]) {
+      // games + played (only for scoring sides)
+      if (sideACounts) {
+        for (const p of A) {
           stats[p].games_for += s1;
           stats[p].games_against += s2;
           stats[p].played += 1;
         }
       }
-      if (team2Counts) {
-        for (const p of [c,d]) {
+      if (sideBCounts) {
+        for (const p of B) {
           stats[p].games_for += s2;
           stats[p].games_against += s1;
           stats[p].played += 1;
         }
       }
 
-      const t1won = s1 > s2;
+      const Awon = s1 > s2;
 
-      // wins (only for scoring teams)
-      if (team1Counts && team2Counts) {
-        if (t1won) { stats[a].wins++; stats[b].wins++; }
-        else { stats[c].wins++; stats[d].wins++; }
-      } else if (team1Counts && !team2Counts) {
-        if (t1won) { stats[a].wins++; stats[b].wins++; }
-      } else if (!team1Counts && team2Counts) {
-        if (!t1won) { stats[c].wins++; stats[d].wins++; }
+      // wins (only for scoring sides)
+      if (sideACounts && sideBCounts) {
+        if (Awon) for (const p of A) stats[p].wins++;
+        else for (const p of B) stats[p].wins++;
+      } else if (sideACounts && !sideBCounts) {
+        if (Awon) for (const p of A) stats[p].wins++;
+      } else if (!sideACounts && sideBCounts) {
+        if (!Awon) for (const p of B) stats[p].wins++;
       }
 
-      // h2h only when BOTH teams pontuam (evita assimetria)
-      if (team1Counts && team2Counts) {
-        const delta1 = s1 - s2;
-        const delta2 = s2 - s1;
-        for (const p of [a,b]) for (const q of [c,d]) {
-          addH2H(p,q,t1won,delta1);
-          addH2H(q,p,!t1won,delta2);
+      // h2h only when BOTH sides pontuam
+      if (sideACounts && sideBCounts) {
+        const deltaA = s1 - s2;
+        const deltaB = s2 - s1;
+        for (const p of A) for (const q of B) {
+          addH2H(p,q,Awon,deltaA);
+          addH2H(q,p,!Awon,deltaB);
         }
       }
     }
@@ -629,26 +738,33 @@ function super8App() {
       pct: t.matches.length ? Math.round(done*100/t.matches.length) : 0
     };
 
-    // partners done (only completed + only for scoring teams)
-    const partnersDone = Array.from({length:n}, ()=> new Set());
-    for (const m of t.matches) {
-      const r = t.results[m.id];
-      if (!r) continue;
-      const s1 = Number(r.score1), s2 = Number(r.score2);
-      if (!Number.isFinite(s1) || !Number.isFinite(s2) || s1 === s2) continue;
-
-      const ns = m.nonScoringTeam || null;
-      const team1Counts = (ns !== 1);
-      const team2Counts = (ns !== 2);
-
-      const [a,b] = m.team1;
-      const [c,d] = m.team2;
-
-      if (team1Counts) { partnersDone[a].add(b); partnersDone[b].add(a); }
-      if (team2Counts) { partnersDone[c].add(d); partnersDone[d].add(c); }
-    }
+    // partners done (only for individual mode)
     const partnerCounts = {};
-    for (let i=0;i<n;i++) partnerCounts[i] = { idx:i, done: partnersDone[i].size, total: n-1 };
+    if (t.mode === "individual") {
+      const partnersDone = Array.from({length:n}, ()=> new Set());
+
+      for (const m of t.matches) {
+        const r = t.results[m.id];
+        if (!r) continue;
+        const s1 = Number(r.score1), s2 = Number(r.score2);
+        if (!Number.isFinite(s1) || !Number.isFinite(s2) || s1 === s2) continue;
+
+        const ns = m.nonScoringTeam || null;
+        const sideACounts = (ns !== 1);
+        const sideBCounts = (ns !== 2);
+
+        if (sideACounts && Array.isArray(m.sideA) && m.sideA.length === 2) {
+          const [a,b] = m.sideA;
+          partnersDone[a].add(b); partnersDone[b].add(a);
+        }
+        if (sideBCounts && Array.isArray(m.sideB) && m.sideB.length === 2) {
+          const [c,d] = m.sideB;
+          partnersDone[c].add(d); partnersDone[d].add(c);
+        }
+      }
+
+      for (let i=0;i<n;i++) partnerCounts[i] = { idx:i, done: partnersDone[i].size, total: n-1 };
+    }
 
     const saldo = (p) => p.games_for - p.games_against;
 
@@ -705,7 +821,7 @@ function super8App() {
       i=j;
     }
 
-    const standings = final.map((p, idx)=>({
+    const standings = final.map((p, idx)=>( {
       rank: idx+1,
       idx: p.idx,
       name: p.name,
@@ -721,6 +837,17 @@ function super8App() {
     return { standings, podium, progress, partnerCounts };
   }
 
+  // ---------- setup: unique check for fixed teams (treat "A+B" same as "B+A") ----------
+  function fixedTeamKey(name) {
+    const normalized = cleanTeamName(name).toLowerCase();
+    const parts = normalized.split("+").map(x => x.trim()).filter(Boolean);
+    if (parts.length === 2) {
+      parts.sort();
+      return parts.join("+");
+    }
+    return normalized;
+  }
+
   return {
     // UI state
     view: "setup",
@@ -732,9 +859,10 @@ function super8App() {
 
     // setup model
     setup: {
+      mode: "individual", // individual | fixed
       playerCount: 6,
       rankingMode: "wins",
-      players: Array.from({length:8}, ()=>"")
+      players: Array.from({length: 6}, ()=>"")
     },
 
     // tournament model
@@ -748,12 +876,24 @@ function super8App() {
     init() {
       this.toast = toastFactory(this);
 
-      // load existing tournament
-      const raw = localStorage.getItem(STORAGE_KEY);
+      // load existing tournament (v2 or v1)
+      const raw = localStorage.getItem(STORAGE_KEY) || localStorage.getItem(STORAGE_KEY_OLD);
       if (raw) {
         try {
           const t = JSON.parse(raw);
           if (t && t.players && t.matches) {
+            // migrate defaults
+            t.mode = t.mode || "individual";
+            t.results = t.results || {};
+            t.rankingMode = t.rankingMode || "wins";
+
+            // normalize matches (support legacy {team1/team2})
+            t.matches = normalizeMatches(t.matches, t.mode);
+
+            // if loaded from v1, persist as v2
+            localStorage.setItem(STORAGE_KEY, JSON.stringify(t));
+            localStorage.removeItem(STORAGE_KEY_OLD);
+
             this.t = t;
             this.view = "tournament";
             this.tab = "games";
@@ -764,6 +904,18 @@ function super8App() {
         } catch (e) {}
       }
       this.syncPlayers();
+    },
+
+    // Display helpers
+    formatSide(side) {
+      if (!this.t) return "";
+      if (this.t.mode === "fixed") {
+        return this.t.players[side[0]] ?? "—";
+      }
+      // individual (side length = 2)
+      const a = this.t.players[side[0]] ?? "—";
+      const b = this.t.players[side[1]] ?? "—";
+      return `${a} + ${b}`;
     },
 
     syncPlayers() {
@@ -793,7 +945,7 @@ function super8App() {
       this.standings = d.standings;
       this.podium = d.podium;
       this.progress = d.progress;
-      this.partnerCounts = d.partnerCounts;
+      this.partnerCounts = d.partnerCounts || {};
       this.saveStorage();
     },
 
@@ -805,21 +957,36 @@ function super8App() {
 
     createTournament() {
       const n = this.setup.playerCount;
+      const mode = this.setup.mode;
+
       if (!(Number.isInteger(n) && n >= 6 && n <= 20)) {
-        this.toast("error", "Quantidade inválida (use de 6 a 20 jogadores).");
+        this.toast("error", "Quantidade inválida (use de 6 a 20).");
         return;
       }
 
       // validate names
-      let names = this.setup.players.map(cleanName);
+      let names;
+      if (mode === "fixed") names = this.setup.players.map(cleanTeamName);
+      else names = this.setup.players.map(cleanName);
+
       if (names.some(x => !x)) {
         this.toast("error", "Preencha todos os nomes.");
         return;
       }
-      const lower = names.map(x=>x.toLowerCase());
-      if (new Set(lower).size !== lower.length) {
-        this.toast("error", "Os nomes precisam ser únicos (sem repetição).");
-        return;
+
+      // uniqueness
+      if (mode === "fixed") {
+        const keys = names.map(fixedTeamKey);
+        if (new Set(keys).size !== keys.length) {
+          this.toast("error", "As duplas precisam ser únicas (ex: 'João + Pedro' conta igual a 'Pedro + João').");
+          return;
+        }
+      } else {
+        const lower = names.map(x=>x.toLowerCase());
+        if (new Set(lower).size !== lower.length) {
+          this.toast("error", "Os nomes precisam ser únicos (sem repetição).");
+          return;
+        }
       }
 
       // seed used for deterministic shuffles & sorteio
@@ -828,19 +995,30 @@ function super8App() {
         if (crypto && crypto.getRandomValues) seed = crypto.getRandomValues(new Uint32Array(1))[0];
       } catch (e) {}
 
-      // manter exatamente o agendamento atual para 8/9/12
-      const matches = ([8,9,12].includes(n))
-        ? generateSchedule(n, String(seed))
-        : generatePartnerSchedule(n, String(seed));
+      let matches;
+
+      if (mode === "individual") {
+        // manter exatamente o agendamento atual para 8/9/12
+        const rawMatches = ([8,9,12].includes(n))
+          ? generateSchedule(n, String(seed))
+          : generatePartnerSchedule(n, String(seed));
+
+        matches = normalizeMatches(rawMatches, "individual");
+      } else {
+        // fixed doubles: round-robin entre duplas
+        const rawMatches = generateFixedTeamSchedule(n, String(seed));
+        matches = normalizeMatches(rawMatches, "fixed");
+      }
 
       this.t = {
         id: String(seed),
         seed: seed,
         createdAt: nowIso(),
-        playerCount: n,
-        players: names,
+        mode: mode,               // "individual" | "fixed"
+        playerCount: n,           // participantes (jogadores ou duplas)
+        players: names,           // nomes (jogadores ou strings "João + Pedro")
         matches: matches,
-        results: {},   // matchId -> {score1, score2}
+        results: {},              // matchId -> {score1, score2}
         rankingMode: this.setup.rankingMode
       };
 
@@ -857,6 +1035,7 @@ function super8App() {
 
     resetToSetup() {
       localStorage.removeItem(STORAGE_KEY);
+      localStorage.removeItem(STORAGE_KEY_OLD);
       this.t = null;
       this.view = "setup";
       this.tab = "games";
